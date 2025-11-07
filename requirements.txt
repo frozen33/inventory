@@ -1,0 +1,48 @@
+# Inventory Management System Dependencies
+# Compatible with Python 3.8+ on both 64-bit and 32-bit systems
+
+# Core Flask framework
+Flask==2.3.3
+
+# User authentication and session management
+Flask-Login==0.6.3
+
+# Password hashing (more secure than bcrypt for cross-platform)
+Werkzeug==2.3.7
+
+# File upload handling
+# No external dependency needed - using Flask's built-in support
+
+# Database (SQLite3 is built into Python)
+# No external dependency needed
+
+# Image processing (optional, lightweight)
+Pillow==10.0.1
+
+# Development and debugging
+Flask-DebugToolbar==0.13.1
+
+# CSRF protection
+Flask-WTF==1.1.1
+WTForms==3.0.1
+
+# Environment configuration
+python-dotenv==1.0.0
+
+# Date/time handling
+python-dateutil==2.8.2
+
+# JSON handling (built into Python)
+# No external dependency needed
+
+# Email validation (lightweight)
+email-validator==2.0.0
+
+# Production WSGI server (optional)
+gunicorn==21.2.0
+
+# Note: All packages selected for:
+# 1. 32-bit compatibility
+# 2. Minimal dependencies
+# 3. Stable versions
+# 4. Cross-platform support

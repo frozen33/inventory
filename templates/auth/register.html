@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Inventory Management{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 2rem auto;">
+    <div class="card-header">
+        <h1 class="text-center mt-0 mb-0">Create Account</h1>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="registerForm">
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email"
+                       id="email"
+                       name="email"
+                       class="form-input"
+                       value="{{ email or '' }}"
+                       required
+                       autocomplete="email"
+                       placeholder="your.email@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password"
+                       id="password"
+                       name="password"
+                       class="form-input"
+                       required
+                       autocomplete="new-password"
+                       placeholder="Create a secure password"
+                       minlength="6">
+                <small style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem; display: block;">
+                    Minimum 6 characters
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <input type="password"
+                       id="confirm_password"
+                       name="confirm_password"
+                       class="form-input"
+                       required
+                       autocomplete="new-password"
+                       placeholder="Confirm your password">
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    ✨ Create Account
+                </button>
+            </div>
+        </form>
+    </div>
+    <div class="card-footer text-center">
+        <p>Already have an account?
+           <a href="{{ url_for('auth.login') }}" style="color: var(--primary-color);">Login here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Focus on email field
+    document.getElementById('email').focus();
+
+    const form = document.getElementById('registerForm');
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirm_password');
+
+    // Real-time password confirmation validation
+    function validatePasswordMatch() {
+        if (confirmPassword.value && password.value !== confirmPassword.value) {
+            confirmPassword.style.borderColor = 'var(--error-color)';
+            return false;
+        } else {
+            confirmPassword.style.borderColor = 'var(--border-color)';
+            return true;
+        }
+    }
+
+    confirmPassword.addEventListener('input', validatePasswordMatch);
+    password.addEventListener('input', function() {
+        if (confirmPassword.value) {
+            validatePasswordMatch();
+        }
+    });
+
+    // Form submission validation
+    form.addEventListener('submit', function(e) {
+        const email = document.getElementById('email').value.trim();
+        const passwordValue = password.value;
+        const confirmPasswordValue = confirmPassword.value;
+
+        // Check all fields are filled
+        if (!email || !passwordValue || !confirmPasswordValue) {
+            e.preventDefault();
+            alert('Please fill in all fields.');
+            return;
+        }
+
+        // Email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            e.preventDefault();
+            alert('Please enter a valid email address.');
+            return;
+        }
+
+        // Password length validation
+        if (passwordValue.length < 6) {
+            e.preventDefault();
+            alert('Password must be at least 6 characters long.');
+            return;
+        }
+
+        // Password match validation
+        if (passwordValue !== confirmPasswordValue) {
+            e.preventDefault();
+            alert('Passwords do not match.');
+            confirmPassword.focus();
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

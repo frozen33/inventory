@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - Inventory Management{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 4rem 2rem; max-width: 600px; margin: 0 auto;">
+    <div style="font-size: 6rem; margin-bottom: 2rem; opacity: 0.6;">🔍</div>
+
+    <h1 style="font-size: 2rem; color: var(--text-primary); margin-bottom: 1rem;">
+        Page Not Found
+    </h1>
+
+    <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1.125rem;">
+        The page you're looking for doesn't exist or has been moved.
+    </p>
+
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="{{ url_for('index') }}" class="btn btn-primary">
+            🏠 Go Home
+        </a>
+
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('inventory.dashboard') }}" class="btn btn-outline">
+                📦 View Inventory
+            </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
