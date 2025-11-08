@@ -6,11 +6,12 @@ from datetime import datetime
 class User(UserMixin):
     """User model for authentication"""
 
-    def __init__(self, id, email, password_hash, created_at):
+    def __init__(self, id, email, password_hash, created_at, role='user'):
         self.id = id
         self.email = email
         self.password_hash = password_hash
         self.created_at = created_at
+        self.role = role
 
     @staticmethod
     def create_user(email, password, database_path='inventory.db'):
@@ -41,7 +42,7 @@ class User(UserMixin):
         conn = get_db_connection(database_path)
         try:
             user_data = conn.execute('''
-                SELECT id, email, password_hash, created_at
+                SELECT id, email, password_hash, created_at, role
                 FROM users
                 WHERE id = ?
             ''', (user_id,)).fetchone()
@@ -51,7 +52,8 @@ class User(UserMixin):
                     id=user_data['id'],
                     email=user_data['email'],
                     password_hash=user_data['password_hash'],
-                    created_at=user_data['created_at']
+                    created_at=user_data['created_at'],
+                    role=user_data['role'] or 'user'
                 )
             return None
 
@@ -64,7 +66,7 @@ class User(UserMixin):
         conn = get_db_connection(database_path)
         try:
             user_data = conn.execute('''
-                SELECT id, email, password_hash, created_at
+                SELECT id, email, password_hash, created_at, role
                 FROM users
                 WHERE email = ?
             ''', (email,)).fetchone()
@@ -74,7 +76,8 @@ class User(UserMixin):
                     id=user_data['id'],
                     email=user_data['email'],
                     password_hash=user_data['password_hash'],
-                    created_at=user_data['created_at']
+                    created_at=user_data['created_at'],
+                    role=user_data['role'] or 'user'
                 )
             return None
 
@@ -138,14 +141,89 @@ class User(UserMixin):
         finally:
             conn.close()
 
+    def is_admin(self):
+        """Check if user has admin role"""
+        return self.role == 'admin'
+
+    @staticmethod
+    def get_all_users(database_path='inventory.db'):
+        """Get all users with their stats (admin only)"""
+        conn = get_db_connection(database_path)
+        try:
+            cursor = conn.execute('''
+                SELECT u.id, u.email, u.role, u.created_at,
+                       COUNT(DISTINCT p.id) as product_count,
+                       COUNT(DISTINCT a.id) as activity_count
+                FROM users u
+                LEFT JOIN products p ON p.created_by = u.id
+                LEFT JOIN product_audit_log a ON a.user_id = u.id
+                GROUP BY u.id
+                ORDER BY u.created_at
+            ''')
+
+            users = []
+            for row in cursor.fetchall():
+                users.append({
+                    'id': row[0],
+                    'email': row[1],
+                    'role': row[2],
+                    'created_at': row[3],
+                    'product_count': row[4],
+                    'activity_count': row[5]
+                })
+
+            return users
+
+        finally:
+            conn.close()
+
+    @staticmethod
+    def promote_to_admin(user_id, database_path='inventory.db'):
+        """Promote user to admin role"""
+        conn = get_db_connection(database_path)
+        try:
+            conn.execute('UPDATE users SET role = ? WHERE id = ?', ('admin', user_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            print(f"Error promoting user: {e}")
+            return False
+        finally:
+            conn.close()
+
+    @staticmethod
+    def demote_from_admin(user_id, database_path='inventory.db'):
+        """Demote admin to regular user role"""
+        conn = get_db_connection(database_path)
+        try:
+            # Check if this is the last admin
+            cursor = conn.execute('SELECT COUNT(*) FROM users WHERE role = ?', ('admin',))
+            admin_count = cursor.fetchone()[0]
+
+            if admin_count <= 1:
+                return False  # Can't demote the last admin
+
+            conn.execute('UPDATE users SET role = ? WHERE id = ?', ('user', user_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            conn.rollback()
+            print(f"Error demoting user: {e}")
+            return False
+        finally:
+            conn.close()
+
     def to_dict(self):
         """Convert user to dictionary (excluding password)"""
         return {
             'id': self.id,
             'email': self.email,
+            'role': self.role,
+            'is_admin': self.is_admin(),
             'created_at': self.created_at,
             'product_count': self.get_product_count()
         }
 
     def __repr__(self):
-        return f'<User {self.email}>'
+        return f'<User {self.email} ({self.role})>'

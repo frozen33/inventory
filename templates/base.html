@@ -165,6 +165,78 @@
             opacity: 1;
         }
 
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-admin {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-creator {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-editor {
+            background-color: #fce7f3;
+            color: #9f1239;
+        }
+
+        .badge-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background-color: #fed7aa;
+            color: #92400e;
+        }
+
+        /* Product Meta Info */
+        .product-meta {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .product-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Audit Log Styles */
+        .audit-log-entry {
+            padding: 0.75rem;
+            border-left: 3px solid var(--border-color);
+            margin-bottom: 0.5rem;
+            background: var(--surface-color);
+        }
+
+        .audit-log-entry.action-create {
+            border-left-color: var(--success-color);
+        }
+
+        .audit-log-entry.action-update {
+            border-left-color: var(--primary-color);
+        }
+
+        .audit-log-entry.action-delete {
+            border-left-color: var(--error-color);
+        }
+
         /* Forms */
         .form-group {
             margin-bottom: 1.5rem;
@@ -349,6 +421,9 @@
                 <nav class="nav-links" id="navLinks">
                     <a href="{{ url_for('inventory.dashboard') }}" class="nav-link">Dashboard</a>
                     <a href="{{ url_for('inventory.new_product') }}" class="nav-link">Add Product</a>
+                    {% if current_user.is_admin() %}
+                    <a href="{{ url_for('admin.dashboard') }}" class="nav-link" style="color: #d97706; font-weight: 600;">⚡ Admin</a>
+                    {% endif %}
                     <a href="{{ url_for('auth.profile') }}" class="nav-link">Profile</a>
                     <a href="{{ url_for('auth.logout') }}" class="nav-link">Logout</a>
                 </nav>

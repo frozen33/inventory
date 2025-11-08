@@ -26,6 +26,9 @@
     <div class="card">
         <div class="card-body">
             <form method="POST" enctype="multipart/form-data" id="productForm">
+                <!-- Hidden product type field -->
+                <input type="hidden" name="product_type" value="{{ product_type|default('power_tools') }}">
+
                 <!-- Product Name -->
                 <div class="form-group">
                     <label for="name" class="form-label">Product Name *</label>
@@ -49,7 +52,8 @@
                               rows="4">{{ product.description if edit_mode and product else '' }}</textarea>
                 </div>
 
-                <!-- Quantity -->
+                <!-- Quantity (only for power_tools) -->
+                {% if product_type|default('power_tools') == 'power_tools' %}
                 <div class="form-group">
                     <label for="quantity" class="form-label">Stock Quantity *</label>
                     <input type="number"
@@ -65,6 +69,100 @@
                         Number of units in stock
                     </small>
                 </div>
+                {% endif %}
+
+                <!-- Tiles-specific fields -->
+                {% if product_type == 'tiles' %}
+                <div class="form-group">
+                    <label class="form-label">Box Information</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label for="tiles_per_box" class="form-label" style="font-size: 0.875rem; color: var(--text-secondary);">
+                                Tiles per Box
+                            </label>
+                            <input type="number"
+                                   id="tiles_per_box"
+                                   name="tiles_per_box"
+                                   class="form-input"
+                                   min="0"
+                                   step="1"
+                                   value="{{ product.tile_details.tiles_per_box if edit_mode and product and product.tile_details else '' }}"
+                                   placeholder="0">
+                        </div>
+                        <div>
+                            <label for="number_of_boxes" class="form-label" style="font-size: 0.875rem; color: var(--text-secondary);">
+                                Number of Boxes
+                            </label>
+                            <input type="number"
+                                   id="number_of_boxes"
+                                   name="number_of_boxes"
+                                   class="form-input"
+                                   min="0"
+                                   step="1"
+                                   value="{{ product.tile_details.number_of_boxes if edit_mode and product and product.tile_details else '' }}"
+                                   placeholder="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Tile Dimensions</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label for="dimension_length" class="form-label" style="font-size: 0.875rem; color: var(--text-secondary);">
+                                Length
+                            </label>
+                            <input type="number"
+                                   id="dimension_length"
+                                   name="dimension_length"
+                                   class="form-input"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ product.tile_details.dimension_length if edit_mode and product and product.tile_details else '' }}"
+                                   placeholder="0.00">
+                        </div>
+                        <div>
+                            <label for="dimension_width" class="form-label" style="font-size: 0.875rem; color: var(--text-secondary);">
+                                Width
+                            </label>
+                            <input type="number"
+                                   id="dimension_width"
+                                   name="dimension_width"
+                                   class="form-input"
+                                   step="0.01"
+                                   min="0"
+                                   value="{{ product.tile_details.dimension_width if edit_mode and product and product.tile_details else '' }}"
+                                   placeholder="0.00">
+                        </div>
+                        <div>
+                            <label for="dimension_unit" class="form-label" style="font-size: 0.875rem; color: var(--text-secondary);">
+                                Unit
+                            </label>
+                            <select id="dimension_unit"
+                                    name="dimension_unit"
+                                    class="form-input">
+                                <option value="feet" {% if edit_mode and product and product.tile_details and product.tile_details.dimension_unit == 'feet' %}selected{% endif %}>Feet</option>
+                                <option value="inch" {% if edit_mode and product and product.tile_details and product.tile_details.dimension_unit == 'inch' %}selected{% endif %}>Inch</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sq_feet_per_box" class="form-label">Sq Feet per Box</label>
+                    <input type="number"
+                           id="sq_feet_per_box"
+                           name="sq_feet_per_box"
+                           class="form-input"
+                           step="0.01"
+                           min="0"
+                           value="{{ product.tile_details.sq_feet_per_box if edit_mode and product and product.tile_details else '' }}"
+                           placeholder="0.00">
+                    <small style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.25rem; display: block;">
+                        Total square footage covered per box
+                    </small>
+                </div>
+                {% endif %}
 
                 <!-- Pricing Section -->
                 <div class="form-group">
@@ -100,7 +198,8 @@
                                    placeholder="0.00">
                         </div>
 
-                        <!-- MRP -->
+                        <!-- MRP (only for power_tools) -->
+                        {% if product_type|default('power_tools') == 'power_tools' %}
                         <div>
                             <label for="mrp" class="form-label" style="font-size: 0.875rem; color: var(--text-secondary);">
                                 MRP (₹)
@@ -114,6 +213,7 @@
                                    value="{{ product.pricing.mrp if edit_mode and product and product.pricing else '' }}"
                                    placeholder="0.00">
                         </div>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -149,7 +249,7 @@
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                         {% for image in product.images %}
                             <div style="position: relative; border: 1px solid var(--border-color); border-radius: var(--border-radius); overflow: hidden;">
-                                <img src="{{ url_for('inventory.uploaded_file', filename='user_' + current_user.id|string + '/' + image.filename) }}"
+                                <img src="{{ url_for('inventory.uploaded_file', filename='user_' + product.user_id|string + '/' + image.filename) }}"
                                      alt="{{ image.original_name }}"
                                      style="width: 100px; height: 100px; object-fit: cover;">
                                 <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; padding: 0.25rem; font-size: 0.75rem; text-align: center;">

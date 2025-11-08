@@ -34,7 +34,7 @@
                         <!-- Main Image -->
                         <div style="margin-bottom: 1rem;">
                             <img id="mainImage"
-                                 src="{{ url_for('inventory.uploaded_file', filename='user_' + current_user.id|string + '/' + product.images[0].filename) }}"
+                                 src="{{ url_for('inventory.uploaded_file', filename='user_' + product.user_id|string + '/' + product.images[0].filename) }}"
                                  alt="{{ product.name }}"
                                  style="width: 100%; max-height: 400px; object-fit: contain; border-radius: var(--border-radius); border: 1px solid var(--border-color);">
                         </div>
@@ -43,7 +43,7 @@
                         {% if product.images|length > 1 %}
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                 {% for image in product.images %}
-                                    <img src="{{ url_for('inventory.uploaded_file', filename='user_' + current_user.id|string + '/' + image.filename) }}"
+                                    <img src="{{ url_for('inventory.uploaded_file', filename='user_' + product.user_id|string + '/' + image.filename) }}"
                                          alt="{{ image.original_name }}"
                                          onclick="changeMainImage(this.src)"
                                          style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--border-radius); border: 1px solid var(--border-color); cursor: pointer; transition: var(--transition);"
@@ -78,8 +78,8 @@
                     </div>
                 {% endif %}
 
-                <!-- Quantity -->
-                {% if product.quantity is defined %}
+                <!-- Quantity (for power_tools only) -->
+                {% if product.product_type == 'power_tools' and product.quantity is defined %}
                     <div style="margin-bottom: 2rem;">
                         <h3 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Stock Quantity</h3>
                         <div style="font-size: 1.5rem; font-weight: bold; color: {% if product.quantity > 10 %}var(--success-color){% elif product.quantity > 0 %}var(--warning-color){% else %}var(--error-color){% endif %};">
@@ -90,6 +90,61 @@
                                 <span style="font-size: 0.875rem; color: var(--warning-color);">(Low Stock)</span>
                             {% endif %}
                         </div>
+                    </div>
+                {% endif %}
+
+                <!-- Tile Details (for tiles only) -->
+                {% if product.product_type == 'tiles' and product.tile_details %}
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="margin: 0 0 1rem 0; color: var(--text-primary);">🔲 Tile Information</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            {% if product.tile_details.tiles_per_box %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Tiles per Box</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.tiles_per_box }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.tile_details.number_of_boxes %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Number of Boxes</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.number_of_boxes }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.tile_details.dimension_display %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Tile Dimensions</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.dimension_display }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.tile_details.sq_feet_per_box %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Sq Feet per Box</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.sq_feet_per_box }} sq ft
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Total Coverage Calculation -->
+                        {% if product.tile_details.sq_feet_per_box and product.tile_details.number_of_boxes %}
+                            {% set total_coverage = product.tile_details.sq_feet_per_box * product.tile_details.number_of_boxes %}
+                            <div style="margin-top: 1rem; padding: 1rem; background-color: #f0fdf4; border-radius: var(--border-radius); border: 1px solid #bbf7d0;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Total Coverage</div>
+                                <div style="font-size: 1.125rem; font-weight: bold; color: var(--success-color);">
+                                    {{ total_coverage }} sq ft
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
                 {% endif %}
 

@@ -76,6 +76,7 @@ CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'user',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,9 +86,15 @@ CREATE TABLE products (
     user_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
+    quantity INTEGER DEFAULT 0,
+    product_type TEXT DEFAULT 'power_tools',
+    created_by INTEGER,
+    updated_by INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (created_by) REFERENCES users (id),
+    FOREIGN KEY (updated_by) REFERENCES users (id)
 );
 
 -- Product images table
@@ -110,6 +117,34 @@ CREATE TABLE product_pricing (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
 );
+
+-- Audit log table
+CREATE TABLE product_audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER,
+    user_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    product_name TEXT,
+    changes TEXT,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE SET NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+-- Tiles details table
+CREATE TABLE tiles_details (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER UNIQUE NOT NULL,
+    tiles_per_box INTEGER,
+    number_of_boxes INTEGER,
+    dimension_length DECIMAL(10,2),
+    dimension_width DECIMAL(10,2),
+    dimension_unit TEXT DEFAULT 'feet',
+    sq_feet_per_box DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+);
 ```
 
 ## Key Features
@@ -119,6 +154,7 @@ CREATE TABLE product_pricing (
 - [x] Session-based authentication
 - [x] Protected routes (no access without login)
 - [x] Password hashing (werkzeug)
+- [x] Admin role system
 
 ### Product Management
 - [x] Add/edit/delete products
@@ -126,6 +162,22 @@ CREATE TABLE product_pricing (
 - [x] Multiple image uploads per product
 - [x] Three price fields: buying_price, selling_price, mrp
 - [x] Product listing with search/filter
+- [x] **Dual product types:**
+  - **Power Tools & Others:** Traditional inventory with quantity and MRP
+  - **Tiles:** Specialized fields (tiles/box, dimensions, sq feet/box)
+- [x] Tabbed dashboard interface for product type separation
+
+### Collaborative Features
+- [x] All users can view all products
+- [x] All users can add/edit/delete any product
+- [x] Audit logging tracks who created/modified what
+- [x] Creator and updater attribution displayed
+
+### Admin Features
+- [x] User management (promote/demote admins)
+- [x] Complete audit log viewing
+- [x] System statistics dashboard
+- [x] User activity tracking
 
 ### Responsive Design
 - [x] Mobile-first CSS design
@@ -138,37 +190,58 @@ CREATE TABLE product_pricing (
 - [x] Image validation (size, type)
 - [x] Automatic image optimization
 - [x] Secure file naming
+- [x] Per-user upload directories
 
 ## File Structure
 
 ```
-inventory/
-├── app.py                 # Main Flask application
-├── config.py             # Configuration settings
-├── requirements.txt      # Python dependencies
-├── database.py          # Database initialization
+inventory-app/
+├── app.py                        # Main Flask application
+├── config.py                     # Configuration settings
+├── requirements.txt              # Python dependencies
+├── database.py                   # Database initialization
+├── inventory.db                  # SQLite database file
+├── CLAUDE.md                     # Project documentation (this file)
+├── SESSION_PROGRESS.md           # Latest session summary
+├── TILES_FEATURE_COMPLETE.md     # Tiles feature documentation
 ├── models/
 │   ├── __init__.py
-│   ├── user.py          # User model
-│   └── product.py       # Product model
+│   ├── user.py                   # User model (with admin support)
+│   ├── product.py                # Product model (with product_type)
+│   ├── product_audit_log.py      # Audit logging model
+│   └── tile_details.py           # Tile details model
 ├── routes/
 │   ├── __init__.py
-│   ├── auth.py          # Authentication routes
-│   └── inventory.py     # Product management routes
+│   ├── auth.py                   # Authentication routes
+│   ├── inventory.py              # Product management routes
+│   └── admin.py                  # Admin panel routes
+├── migrations/
+│   ├── add_collaborative_features.py  # Collaborative + admin migration
+│   └── add_tiles_inventory.py         # Tiles feature migration
+├── scripts/
+│   └── manage_admin.py           # Admin management CLI
 ├── static/
 │   ├── css/
-│   │   └── style.css    # Main stylesheet
+│   │   └── style.css             # Main stylesheet
 │   ├── js/
-│   │   └── app.js       # Frontend JavaScript
-│   └── images/          # Static images
+│   │   └── app.js                # Frontend JavaScript
+│   └── images/                   # Static images
 ├── templates/
-│   ├── base.html        # Base template
-│   ├── login.html       # Login page
-│   ├── register.html    # Registration page
-│   ├── dashboard.html   # Main inventory view
-│   └── product.html     # Product details/edit
-├── uploads/             # User uploaded images
-└── inventory.db         # SQLite database file
+│   ├── base.html                 # Base template (with admin nav)
+│   ├── auth/
+│   │   ├── login.html            # Login page
+│   │   └── register.html         # Registration page
+│   ├── inventory/
+│   │   ├── dashboard.html        # Tabbed inventory dashboard
+│   │   ├── product_form.html     # Dynamic product form
+│   │   └── product_detail.html   # Product detail view
+│   └── admin/
+│       ├── dashboard.html        # Admin dashboard
+│       ├── users.html            # User management
+│       └── audit_log.html        # Audit log viewer
+└── uploads/
+    └── products/
+        └── user_1/               # Per-user image directories
 ```
 
 ## Deployment Options
@@ -202,28 +275,35 @@ cloudflared tunnel --url http://localhost:5000
 
 ## Development Phases
 
-### Phase 1: Core Setup ⏳
-- [ ] Project structure
-- [ ] Database initialization
-- [ ] Basic Flask app
+### Phase 1: Core Setup ✅
+- [x] Project structure
+- [x] Database initialization
+- [x] Basic Flask app
 
-### Phase 2: Authentication 🔄
-- [ ] User registration/login
-- [ ] Session management
-- [ ] Route protection
+### Phase 2: Authentication ✅
+- [x] User registration/login
+- [x] Session management
+- [x] Route protection
 
-### Phase 3: Product Management 📋
-- [ ] CRUD operations
-- [ ] Image upload
-- [ ] Price management
+### Phase 3: Product Management ✅
+- [x] CRUD operations
+- [x] Image upload
+- [x] Price management
 
-### Phase 4: Frontend 🎨
-- [ ] Responsive design
-- [ ] Mobile optimization
-- [ ] User experience
+### Phase 4: Frontend ✅
+- [x] Responsive design
+- [x] Mobile optimization
+- [x] User experience
 
-### Phase 5: Testing & Deployment 🚀
-- [ ] Cross-platform testing
+### Phase 5: Advanced Features ✅
+- [x] Collaborative inventory (all users see all products)
+- [x] Admin role system
+- [x] Audit logging
+- [x] Dual product types (Power Tools & Tiles)
+- [x] Tabbed dashboard interface
+
+### Phase 6: Testing & Deployment 🔄
+- [x] Cross-platform testing
 - [ ] Performance optimization
 - [ ] Production deployment
 
@@ -287,5 +367,31 @@ cloudflared tunnel --url http://localhost:5000
 - Performance monitoring
 
 ---
-*Last Updated: 2025-09-21*
+
+## Recent Updates (November 7, 2025)
+
+### Tiles Inventory Feature ✅
+- Added dual product type system (Power Tools & Tiles)
+- Created tabbed dashboard interface
+- Implemented tile-specific fields with dimension unit dropdown
+- All tile fields are user input (no auto-calculation)
+- See `TILES_FEATURE_COMPLETE.md` for full details
+
+### Current Database State
+- 2 users (test@example.com + another)
+- 5 products (4 power tools, 1 tile)
+- 2 images uploaded
+- 4 audit log entries
+- Collaborative mode active
+
+### Testing Status
+- ✅ Tiles feature fully tested
+- ✅ Product creation working for both types
+- ✅ Tab switching functional
+- ✅ Image uploads working
+- ✅ All CRUD operations verified
+
+---
+*Last Updated: 2025-11-07*
 *Environment: Ubuntu 22.04 VM → Debian 12 32-bit*
+*Latest Feature: Tiles Inventory System*

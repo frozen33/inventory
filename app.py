@@ -27,9 +27,11 @@ def create_app(config_name='development'):
     # Register blueprints
     from routes.auth import auth_bp
     from routes.inventory import inventory_bp
+    from routes.admin import admin_bp
 
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(inventory_bp, url_prefix='/inventory')
+    app.register_blueprint(admin_bp)  # Admin routes already have /admin prefix
 
     # Main routes
     @app.route('/')

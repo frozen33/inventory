@@ -5,24 +5,30 @@ import os
 class Product:
     """Product model for inventory management"""
 
-    def __init__(self, id, user_id, name, description, quantity, created_at, updated_at):
+    def __init__(self, id, user_id, name, description, quantity, created_at, updated_at, created_by=None, updated_by=None, product_type='power_tools'):
         self.id = id
-        self.user_id = user_id
+        self.user_id = user_id  # Kept for backward compatibility
         self.name = name
         self.description = description
         self.quantity = quantity
         self.created_at = created_at
         self.updated_at = updated_at
+        self.created_by = created_by or user_id
+        self.updated_by = updated_by or user_id
+        self.product_type = product_type
 
     @staticmethod
-    def create_product(user_id, name, description='', quantity=0, database_path='inventory.db'):
+    def create_product(user_id, name, description='', quantity=0, created_by=None, product_type='power_tools', database_path='inventory.db'):
         """Create a new product"""
         conn = get_db_connection(database_path)
         try:
+            # Use created_by if provided, otherwise use user_id for backward compatibility
+            creator_id = created_by or user_id
+
             cursor = conn.execute('''
-                INSERT INTO products (user_id, name, description, quantity)
-                VALUES (?, ?, ?, ?)
-            ''', (user_id, name, description, quantity))
+                INSERT INTO products (user_id, name, description, quantity, created_by, updated_by, product_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (user_id, name, description, quantity, creator_id, creator_id, product_type))
 
             product_id = cursor.lastrowid
             conn.commit()
@@ -41,7 +47,7 @@ class Product:
         conn = get_db_connection(database_path)
         try:
             product_data = conn.execute('''
-                SELECT id, user_id, name, description, quantity, created_at, updated_at
+                SELECT id, user_id, name, description, quantity, created_at, updated_at, created_by, updated_by, product_type
                 FROM products
                 WHERE id = ?
             ''', (product_id,)).fetchone()
@@ -54,7 +60,10 @@ class Product:
                     description=product_data['description'],
                     quantity=product_data['quantity'],
                     created_at=product_data['created_at'],
-                    updated_at=product_data['updated_at']
+                    updated_at=product_data['updated_at'],
+                    created_by=product_data['created_by'],
+                    updated_by=product_data['updated_by'],
+                    product_type=product_data['product_type'] or 'power_tools'
                 )
             return None
 
@@ -63,11 +72,11 @@ class Product:
 
     @staticmethod
     def get_by_user(user_id, limit=None, offset=0, search_term='', database_path='inventory.db'):
-        """Get products by user ID with optional pagination and search"""
+        """Get products by user ID with optional pagination and search (DEPRECATED - use get_all for collaborative)"""
         conn = get_db_connection(database_path)
         try:
             query = '''
-                SELECT id, user_id, name, description, quantity, created_at, updated_at
+                SELECT id, user_id, name, description, quantity, created_at, updated_at, created_by, updated_by, product_type
                 FROM products
                 WHERE user_id = ?
             '''
@@ -96,7 +105,10 @@ class Product:
                     description=row['description'],
                     quantity=row['quantity'],
                     created_at=row['created_at'],
-                    updated_at=row['updated_at']
+                    updated_at=row['updated_at'],
+                    created_by=row['created_by'],
+                    updated_by=row['updated_by'],
+                    product_type=row['product_type'] or 'power_tools'
                 ))
 
             return products
@@ -104,7 +116,67 @@ class Product:
         finally:
             conn.close()
 
-    def update(self, name=None, description=None, quantity=None, database_path='inventory.db'):
+    @staticmethod
+    def get_all(limit=None, offset=0, search_term='', product_type=None, database_path='inventory.db'):
+        """Get all products for collaborative inventory (everyone sees everything)"""
+        conn = get_db_connection(database_path)
+        try:
+            query = '''
+                SELECT p.id, p.user_id, p.name, p.description, p.quantity,
+                       p.created_at, p.updated_at, p.created_by, p.updated_by, p.product_type,
+                       u_created.email as creator_email,
+                       u_updated.email as updater_email
+                FROM products p
+                LEFT JOIN users u_created ON p.created_by = u_created.id
+                LEFT JOIN users u_updated ON p.updated_by = u_updated.id
+                WHERE 1=1
+            '''
+            params = []
+
+            # Add product type filter
+            if product_type:
+                query += ' AND p.product_type = ?'
+                params.append(product_type)
+
+            # Add search filter
+            if search_term:
+                query += ' AND (p.name LIKE ? OR p.description LIKE ?)'
+                search_pattern = f'%{search_term}%'
+                params.extend([search_pattern, search_pattern])
+
+            # Add ordering
+            query += ' ORDER BY p.updated_at DESC'
+
+            # Add pagination
+            if limit:
+                query += ' LIMIT ? OFFSET ?'
+                params.extend([limit, offset])
+
+            products = []
+            for row in conn.execute(query, params):
+                product = Product(
+                    id=row[0],
+                    user_id=row[1],
+                    name=row[2],
+                    description=row[3],
+                    quantity=row[4],
+                    created_at=row[5],
+                    updated_at=row[6],
+                    created_by=row[7],
+                    updated_by=row[8],
+                    product_type=row[9] or 'power_tools'
+                )
+                # Add email info as attributes
+                product.creator_email = row[10]
+                product.updater_email = row[11]
+                products.append(product)
+
+            return products
+
+        finally:
+            conn.close()
+
+    def update(self, name=None, description=None, quantity=None, updated_by=None, database_path='inventory.db'):
         """Update product details"""
         conn = get_db_connection(database_path)
         try:
@@ -114,12 +186,14 @@ class Product:
                 self.description = description
             if quantity is not None:
                 self.quantity = quantity
+            if updated_by is not None:
+                self.updated_by = updated_by
 
             conn.execute('''
                 UPDATE products
-                SET name = ?, description = ?, quantity = ?, updated_at = CURRENT_TIMESTAMP
+                SET name = ?, description = ?, quantity = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            ''', (self.name, self.description, self.quantity, self.id))
+            ''', (self.name, self.description, self.quantity, self.updated_by, self.id))
 
             conn.commit()
             return True
@@ -269,7 +343,8 @@ class Product:
             'description': self.description,
             'quantity': self.quantity,
             'created_at': self.created_at,
-            'updated_at': self.updated_at
+            'updated_at': self.updated_at,
+            'product_type': self.product_type
         }
 
         if include_pricing:
@@ -278,11 +353,16 @@ class Product:
         if include_images:
             product_dict['images'] = self.get_images(database_path)
 
+        # Include tile details if this is a tiles product
+        if self.product_type == 'tiles':
+            tile_details = self.get_tile_details(database_path)
+            product_dict['tile_details'] = tile_details.to_dict() if tile_details else None
+
         return product_dict
 
     @staticmethod
     def get_user_product_count(user_id, database_path='inventory.db'):
-        """Get total number of products for a user"""
+        """Get total number of products for a user (DEPRECATED - use get_total_count for collaborative)"""
         conn = get_db_connection(database_path)
         try:
             result = conn.execute('''
@@ -296,5 +376,68 @@ class Product:
         finally:
             conn.close()
 
+    @staticmethod
+    def get_total_count(search_term='', product_type=None, database_path='inventory.db'):
+        """Get total number of products (for collaborative inventory)"""
+        conn = get_db_connection(database_path)
+        try:
+            query = 'SELECT COUNT(*) as count FROM products WHERE 1=1'
+            params = []
+
+            if product_type:
+                query += ' AND product_type = ?'
+                params.append(product_type)
+
+            if search_term:
+                query += ' AND (name LIKE ? OR description LIKE ?)'
+                search_pattern = f'%{search_term}%'
+                params.extend([search_pattern, search_pattern])
+
+            result = conn.execute(query, params).fetchone()
+            return result['count']
+
+        finally:
+            conn.close()
+
+    def get_creator_info(self, database_path='inventory.db'):
+        """Get creator user information"""
+        if not self.created_by:
+            return None
+
+        conn = get_db_connection(database_path)
+        try:
+            user_data = conn.execute('''
+                SELECT id, email FROM users WHERE id = ?
+            ''', (self.created_by,)).fetchone()
+
+            return dict(user_data) if user_data else None
+
+        finally:
+            conn.close()
+
+    def get_updater_info(self, database_path='inventory.db'):
+        """Get last updater user information"""
+        if not self.updated_by:
+            return None
+
+        conn = get_db_connection(database_path)
+        try:
+            user_data = conn.execute('''
+                SELECT id, email FROM users WHERE id = ?
+            ''', (self.updated_by,)).fetchone()
+
+            return dict(user_data) if user_data else None
+
+        finally:
+            conn.close()
+
+    def get_tile_details(self, database_path='inventory.db'):
+        """Get tile details for this product (if it's a tile product)"""
+        if self.product_type != 'tiles':
+            return None
+
+        from models.tile_details import TileDetails
+        return TileDetails.get_by_product_id(self.id, database_path)
+
     def __repr__(self):
-        return f'<Product {self.name}>'
+        return f'<Product {self.name} ({self.product_type})>'
