@@ -132,8 +132,4 @@ if __name__ == '__main__':
     """)
 
     # Run the application
-    app.run(
-        host=host,
-        port=port,
-        debug=app.config['DEBUG']
-    )
+    app.run(host='0.0.0.0', port=5000, debug=True)
