@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Inventory Management{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">⚡ Admin Dashboard</h1>
+    <p style="color: #64748b;">System overview and management</p>
+</div>
+
+<!-- Statistics Cards -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.5rem;">Total Users</div>
+        <div style="font-size: 2rem; font-weight: bold;">{{ total_users }}</div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">{{ admin_count }} admins</div>
+    </div>
+
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.5rem;">Total Products</div>
+        <div style="font-size: 2rem; font-weight: bold;">{{ total_products }}</div>
+    </div>
+
+    <div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.5rem;">Total Actions</div>
+        <div style="font-size: 2rem; font-weight: bold;">{{ activity_stats.total_actions or 0 }}</div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">{{ activity_stats.actions_last_24h or 0 }} in last 24h</div>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+    <a href="{{ url_for('admin.users') }}" style="background: #3b82f6; color: white; padding: 1rem; border-radius: 0.5rem; text-align: center; text-decoration: none; font-weight: 600;">
+        👥 Manage Users
+    </a>
+    <a href="{{ url_for('admin.audit_log') }}" style="background: #8b5cf6; color: white; padding: 1rem; border-radius: 0.5rem; text-align: center; text-decoration: none; font-weight: 600;">
+        📋 View Audit Log
+    </a>
+    <a href="{{ url_for('inventory.dashboard') }}" style="background: #10b981; color: white; padding: 1rem; border-radius: 0.5rem; text-align: center; text-decoration: none; font-weight: 600;">
+        📦 All Products
+    </a>
+</div>
+
+<!-- Recent Activity -->
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <h2 style="font-size: 1.25rem; font-weight: bold; margin-bottom: 1rem;">Recent Activity</h2>
+
+    {% if recent_activity %}
+    <div>
+        {% for activity in recent_activity[:10] %}
+        <div class="audit-log-entry action-{{ activity.action }}" style="margin-bottom: 0.75rem; padding: 0.75rem; background: #f8fafc; border-radius: 0.375rem;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <span style="font-weight: 600;">{{ activity.user_email or 'Unknown User' }}</span>
+                    <span style="color: #64748b;">
+                        {% if activity.action == 'create' %}
+                        created
+                        {% elif activity.action == 'update' %}
+                        updated
+                        {% elif activity.action == 'delete' %}
+                        deleted
+                        {% endif %}
+                    </span>
+                    <span style="font-weight: 600;">{{ activity.product_name }}</span>
+                </div>
+                <span style="font-size: 0.75rem; color: #64748b;">{{ activity.timestamp }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: #64748b;">No recent activity</p>
+    {% endif %}
+
+    <a href="{{ url_for('admin.audit_log') }}" style="display: block; margin-top: 1rem; color: #3b82f6; text-decoration: none;">View all activity →</a>
+</div>
+{% endblock %}

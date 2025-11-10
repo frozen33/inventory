@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Product History - Admin{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <h1 style="font-size: 2rem; font-weight: bold; margin-bottom: 0.5rem;">Product History</h1>
+    {% if product %}
+    <p style="color: #64748b;">History for {{ product.name }}</p>
+    {% else %}
+    <p style="color: #64748b;">History for deleted product (ID: {{ product_id }})</p>
+    {% endif %}
+</div>
+
+<div style="background: white; padding: 1.5rem; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    {% if history %}
+    {% for entry in history %}
+    <div class="audit-log-entry action-{{ entry.action }}" style="padding: 1rem; margin-bottom: 0.75rem; background: #f8fafc; border-radius: 0.375rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+            <div>
+                <strong>{{ entry.user_email or 'Unknown' }}</strong>
+                <span style="color: #64748b;">
+                    {% if entry.action == 'create' %}created this product{% elif entry.action == 'update' %}made changes{% elif entry.action == 'delete' %}deleted this product{% endif %}
+                </span>
+            </div>
+            <span style="font-size: 0.75rem; color: #64748b;">{{ entry.timestamp }}</span>
+        </div>
+
+        {% if entry.changes %}
+        <div style="margin-top: 0.5rem; padding: 0.75rem; background: white; border-radius: 0.25rem; font-size: 0.875rem;">
+            {% for field, change in entry.changes.items() %}
+            <div style="color: #475569; margin-left: 0.5rem;">
+                • <strong>{{ field }}</strong>:
+                <span style="text-decoration: line-through; color: #ef4444;">{{ change.old }}</span>
+                → <span style="color: #10b981;">{{ change.new }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p style="color: #64748b; text-align: center; padding: 2rem;">No history available</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 1.5rem;">
+    <a href="{{ url_for('admin.audit_log') }}" style="color: #3b82f6; text-decoration: none;">← Back to Audit Log</a>
+</div>
+{% endblock %}

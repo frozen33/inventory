@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}{{ product.name }} - Inventory Management{% endblock %}
+
+{% block content %}
+<div style="max-width: 1000px; margin: 0 auto;">
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="margin: 0; color: var(--text-primary);">{{ product.name }}</h1>
+            <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">
+                Product Details
+            </p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="{{ url_for('inventory.edit_product', product_id=product.id) }}" class="btn btn-primary">
+                ✏️ Edit
+            </a>
+            <a href="{{ url_for('inventory.dashboard') }}" class="btn btn-outline">
+                ← Back to Inventory
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <!-- Product Images -->
+        <div class="card">
+            <div class="card-header">
+                <h2 style="margin: 0;">📸 Images</h2>
+            </div>
+            <div class="card-body">
+                {% if product.images and product.images|length > 0 %}
+                    <div class="image-gallery">
+                        <!-- Main Image -->
+                        <div style="margin-bottom: 1rem;">
+                            <img id="mainImage"
+                                 src="{{ url_for('inventory.uploaded_file', filename='user_' + product.user_id|string + '/' + product.images[0].filename) }}"
+                                 alt="{{ product.name }}"
+                                 style="width: 100%; max-height: 400px; object-fit: contain; border-radius: var(--border-radius); border: 1px solid var(--border-color);">
+                        </div>
+
+                        <!-- Thumbnail Gallery -->
+                        {% if product.images|length > 1 %}
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                {% for image in product.images %}
+                                    <img src="{{ url_for('inventory.uploaded_file', filename='user_' + product.user_id|string + '/' + image.filename) }}"
+                                         alt="{{ image.original_name }}"
+                                         onclick="changeMainImage(this.src)"
+                                         style="width: 60px; height: 60px; object-fit: cover; border-radius: var(--border-radius); border: 1px solid var(--border-color); cursor: pointer; transition: var(--transition);"
+                                         onmouseover="this.style.opacity='0.7'"
+                                         onmouseout="this.style.opacity='1'">
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div style="text-align: center; padding: 4rem 2rem; color: var(--text-secondary);">
+                        <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">📦</div>
+                        <p>No images uploaded</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Product Information -->
+        <div class="card">
+            <div class="card-header">
+                <h2 style="margin: 0;">📋 Information</h2>
+            </div>
+            <div class="card-body">
+                <!-- Description -->
+                {% if product.description %}
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Description</h3>
+                        <p style="margin: 0; color: var(--text-secondary); line-height: 1.6;">
+                            {{ product.description }}
+                        </p>
+                    </div>
+                {% endif %}
+
+                <!-- Quantity (for power_tools only) -->
+                {% if product.product_type == 'power_tools' and product.quantity is defined %}
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Stock Quantity</h3>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: {% if product.quantity > 10 %}var(--success-color){% elif product.quantity > 0 %}var(--warning-color){% else %}var(--error-color){% endif %};">
+                            {{ product.quantity or 0 }} units
+                            {% if product.quantity == 0 %}
+                                <span style="font-size: 0.875rem; color: var(--error-color);">(Out of Stock)</span>
+                            {% elif product.quantity <= 10 %}
+                                <span style="font-size: 0.875rem; color: var(--warning-color);">(Low Stock)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Tile Details (for tiles only) -->
+                {% if product.product_type == 'tiles' and product.tile_details %}
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="margin: 0 0 1rem 0; color: var(--text-primary);">🔲 Tile Information</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            {% if product.tile_details.tiles_per_box %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Tiles per Box</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.tiles_per_box }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.tile_details.number_of_boxes %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Number of Boxes</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.number_of_boxes }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.tile_details.dimension_display %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Tile Dimensions</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.dimension_display }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.tile_details.sq_feet_per_box %}
+                                <div style="padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Sq Feet per Box</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-primary);">
+                                        {{ product.tile_details.sq_feet_per_box }} sq ft
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Total Coverage Calculation -->
+                        {% if product.tile_details.sq_feet_per_box and product.tile_details.number_of_boxes %}
+                            {% set total_coverage = product.tile_details.sq_feet_per_box * product.tile_details.number_of_boxes %}
+                            <div style="margin-top: 1rem; padding: 1rem; background-color: #f0fdf4; border-radius: var(--border-radius); border: 1px solid #bbf7d0;">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Total Coverage</div>
+                                <div style="font-size: 1.125rem; font-weight: bold; color: var(--success-color);">
+                                    {{ total_coverage }} sq ft
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <!-- Pricing -->
+                {% if product.pricing %}
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="margin: 0 0 1rem 0; color: var(--text-primary);">💰 Pricing</h3>
+                        <div class="pricing-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                            {% if product.pricing.buying_price %}
+                                <div style="text-align: center; padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Buying Price</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--error-color);">
+                                        {{ product.pricing.buying_price|currency }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.pricing.selling_price %}
+                                <div style="text-align: center; padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Selling Price</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--success-color);">
+                                        {{ product.pricing.selling_price|currency }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            {% if product.pricing.mrp %}
+                                <div style="text-align: center; padding: 1rem; background-color: var(--background-color); border-radius: var(--border-radius);">
+                                    <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">MRP</div>
+                                    <div style="font-size: 1.25rem; font-weight: bold; color: var(--primary-color);">
+                                        {{ product.pricing.mrp|currency }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Profit Calculation -->
+                        {% if product.pricing.selling_price and product.pricing.buying_price %}
+                            {% set profit = product.pricing.selling_price - product.pricing.buying_price %}
+                            {% set profit_percent = ((profit / product.pricing.buying_price) * 100) if product.pricing.buying_price > 0 else 0 %}
+                            <div style="margin-top: 1rem; padding: 1rem; background-color: {% if profit > 0 %}#f0fdf4{% else %}#fef2f2{% endif %}; border-radius: var(--border-radius); border: 1px solid {% if profit > 0 %}#bbf7d0{% else %}#fecaca{% endif %};">
+                                <div style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Profit per Unit</div>
+                                <div style="font-size: 1.125rem; font-weight: bold; color: {% if profit > 0 %}var(--success-color){% else %}var(--error-color){% endif %};">
+                                    {{ profit|currency }} ({{ "%.1f"|format(profit_percent) }}%)
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <!-- Metadata -->
+                <div>
+                    <h3 style="margin: 0 0 1rem 0; color: var(--text-primary);">📅 Dates</h3>
+                    <div style="color: var(--text-secondary); line-height: 1.6;">
+                        <div><strong>Created:</strong> {{ product.created_at|datetime('%B %d, %Y at %I:%M %p') }}</div>
+                        {% if product.updated_at != product.created_at %}
+                            <div><strong>Last Updated:</strong> {{ product.updated_at|datetime('%B %d, %Y at %I:%M %p') }}</div>
+                        {% endif %}
+                        {% if product.pricing and product.pricing.updated_at %}
+                            <div><strong>Pricing Updated:</strong> {{ product.pricing.updated_at|datetime('%B %d, %Y at %I:%M %p') }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="card" style="margin-top: 2rem;">
+        <div class="card-body">
+            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <a href="{{ url_for('inventory.edit_product', product_id=product.id) }}" class="btn btn-primary">
+                    ✏️ Edit Product
+                </a>
+                <button onclick="confirmDelete()" class="btn btn-danger">
+                    🗑️ Delete Product
+                </button>
+                <a href="{{ url_for('inventory.dashboard') }}" class="btn btn-outline">
+                    ← Back to Inventory
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Form -->
+    <form id="deleteForm" method="POST" action="{{ url_for('inventory.delete_product', product_id=product.id) }}" style="display: none;">
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media (max-width: 768px) {
+        .grid.grid-cols-1 {
+            grid-template-columns: 1fr;
+        }
+
+        .pricing-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .card-body > div {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changeMainImage(src) {
+    document.getElementById('mainImage').src = src;
+}
+
+function confirmDelete() {
+    if (confirm('Are you sure you want to delete "{{ product.name }}"? This action cannot be undone.')) {
+        document.getElementById('deleteForm').submit();
+    }
+}
+</script>
+{% endblock %}

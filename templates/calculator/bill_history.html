@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Bill History - Calculator{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1>📋 Bill History</h1>
+        <div class="header-actions">
+            <a href="/calculator" class="btn btn-secondary">← Back to Calculator</a>
+            {% if old_bills_count > 0 %}
+            <button class="btn btn-danger" onclick="deleteOldBills()">
+                🗑️ Delete Bills Older Than 30 Days ({{ old_bills_count }})
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if bills %}
+    <div class="bills-list">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Created By</th>
+                    <th>Bill Name</th>
+                    <th>Total Boxes</th>
+                    <th>Total Price</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bill in bills %}
+                <tr>
+                    <td>{{ bill.created_at|datetime('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ bill.created_by }}</td>
+                    <td>{{ bill.bill_name or '(Unnamed)' }}</td>
+                    <td><strong>{{ bill.total_boxes }}</strong> boxes</td>
+                    <td>
+                        {% if bill.total_price > 0 %}
+                            ₹{{ '%.2f'|format(bill.total_price) }}
+                        {% else %}
+                            <span class="text-muted">Price TBD</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/calculator/bill/{{ bill.id }}" class="btn btn-sm btn-primary">View Details</a>
+                        <button class="btn btn-sm btn-danger" onclick="deleteBill({{ bill.id }})">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No saved bills found.</p>
+        <a href="/calculator" class="btn btn-primary">Create Your First Bill</a>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.bills-list {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem;
+    background: white;
+    border-radius: 8px;
+}
+
+.text-muted {
+    color: #6c757d;
+}
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #bd2130;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    margin-right: 0.5rem;
+}
+</style>
+
+<script>
+async function deleteOldBills() {
+    if (!confirm('This will delete all bills older than 30 days. Continue?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/calculator/delete-old-bills', {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`Successfully deleted ${result.deleted_count} old bills`);
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to delete old bills: ' + error.message);
+    }
+}
+
+async function deleteBill(billId) {
+    if (!confirm('Delete this bill?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/calculator/delete-bill/${billId}`, {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Failed to delete bill: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

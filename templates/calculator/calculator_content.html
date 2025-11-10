@@ -1,0 +1,558 @@
+<!-- Calculator Tab Content (to be included in dashboard) -->
+<div class="calculator-wrapper">
+    <!-- Sub-Tabs for Calculator -->
+    <div class="calculator-tabs-container" style="margin-bottom: 2rem;">
+        <div class="calculator-tabs" style="border-bottom: 2px solid #e0e0e0; display: flex; gap: 0.5rem;">
+            <button class="calculator-tab-btn active" onclick="switchCalculatorSubTab('floor')">
+                📐 Floor
+            </button>
+            <button class="calculator-tab-btn" onclick="switchCalculatorSubTab('wall')">
+                🧱 Wall
+            </button>
+            <button class="calculator-tab-btn" onclick="switchCalculatorSubTab('bill')">
+                📦 Box & Price <span id="bill-count-badge" class="badge" style="margin-left:0.5rem;">{{ bill_items|length if bill_items else 0 }}</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Floor Calculator Sub-Tab -->
+    <div id="floor-subtab" class="calculator-subtab-content active">
+        <div class="calculator-container" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2>Floor Tile Calculator</h2>
+
+            <!-- Input Mode Selection -->
+            <div class="input-mode-selection" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                <label class="radio-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="floor_mode" value="predefined" checked onchange="switchFloorMode(this.value)">
+                    <span>Predefined Tiles</span>
+                </label>
+                <label class="radio-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="floor_mode" value="inventory" onchange="switchFloorMode(this.value)">
+                    <span>From Inventory</span>
+                </label>
+                <label class="radio-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="floor_mode" value="manual" onchange="switchFloorMode(this.value)">
+                    <span>Manual Entry</span>
+                </label>
+            </div>
+
+            <form id="floor-calc-form" class="calc-form">
+                <!-- Predefined Tiles Mode -->
+                <div id="floor-predefined" class="mode-section" style="padding: 1rem; background: #f8f9fa; border-radius: 6px; margin-bottom: 1rem;">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Tile Size</label>
+                        <select name="tile_size" class="form-control" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                            <option value="1x1">1x1 ft (10 tiles/box, 10 sq ft/box)</option>
+                            <option value="2x2">2x2 ft (4 tiles/box, 16 sq ft/box)</option>
+                            <option value="4x2">4x2 ft (2 tiles/box, 16 sq ft/box)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Price per Box (Optional)</label>
+                        <input type="number" name="price_per_box_pred" step="0.01" class="form-control" placeholder="₹">
+                    </div>
+                </div>
+
+                <!-- From Inventory Mode -->
+                <div id="floor-inventory" class="mode-section" style="display:none; padding: 1rem; background: #f8f9fa; border-radius: 6px; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Select Tile from Inventory</label>
+                        <select name="product_id" class="form-control">
+                            <option value="">-- Select a tile --</option>
+                            {% for tile in tiles_inventory %}
+                            <option value="{{ tile.id }}"
+                                    data-tiles-per-box="{{ tile.tiles_per_box }}"
+                                    data-coverage="{{ tile.sq_feet_per_box }}"
+                                    data-price="{{ tile.price or '' }}"
+                                    data-dimensions="{{ tile.dimensions }}">
+                                {{ tile.name }} ({{ tile.dimensions }}) {% if tile.price %}@ ₹{{ tile.price }}/box{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Manual Entry Mode -->
+                <div id="floor-manual" class="mode-section" style="display:none; padding: 1rem; background: #f8f9fa; border-radius: 6px; margin-bottom: 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>Tile Length</label>
+                            <input type="number" name="tile_length" step="0.01" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Tile Width</label>
+                            <input type="number" name="tile_width" step="0.01" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Unit</label>
+                            <select name="tile_unit" class="form-control">
+                                <option value="feet">Feet</option>
+                                <option value="inch">Inch</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tiles per Box</label>
+                        <input type="number" name="tiles_per_box_manual" class="form-control">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Price per Box (Optional)</label>
+                        <input type="number" name="price_per_box_manual" step="0.01" class="form-control" placeholder="₹">
+                    </div>
+                </div>
+
+                <!-- Room Dimensions -->
+                <div style="font-weight: 600; margin: 1.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #007bff;">Room Dimensions</div>
+
+                <!-- Dimension Input Mode Toggle -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="floor_dimension_mode" value="dimensions" checked onchange="switchFloorDimensionMode('dimensions')">
+                        <span>Enter Width & Length</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 0.5rem;">
+                        <input type="radio" name="floor_dimension_mode" value="sqfeet" onchange="switchFloorDimensionMode('sqfeet')">
+                        <span>Enter Square Feet Directly</span>
+                    </label>
+                </div>
+
+                <!-- Dimensions Mode -->
+                <div id="floor-dimensions-input" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Room Width (ft) <span style="color: red;">*</span></label>
+                        <input type="number" name="room_width" step="0.01" class="form-control" id="floor_room_width">
+                    </div>
+                    <div class="form-group">
+                        <label>Room Length (ft) <span style="color: red;">*</span></label>
+                        <input type="number" name="room_length" step="0.01" class="form-control" id="floor_room_length">
+                    </div>
+                </div>
+
+                <!-- Square Feet Mode -->
+                <div id="floor-sqfeet-input" style="display: none; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Total Square Feet <span style="color: red;">*</span></label>
+                        <input type="number" name="total_sqfeet" step="0.01" class="form-control" id="floor_total_sqfeet" placeholder="Enter total area in sq ft">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #007bff; color: white;">Calculate</button>
+            </form>
+
+            <!-- Results -->
+            <div id="floor-results" style="display:none; margin-top: 2rem; padding: 1.5rem; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                <h3>Calculation Results</h3>
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Floor Area:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="floor-area">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Coverage per Box:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="floor-coverage">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Boxes Needed:</span>
+                        <span style="font-size: 1.25rem; font-weight: 600; color: #1b5e20;" id="floor-boxes">-</span>
+                    </div>
+                    <div id="floor-price-row" style="display:none; display: flex; justify-content: space-between; padding: 0.75rem;">
+                        <span style="font-weight: 500;">Total Price:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="floor-total-price">-</span>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="addFloorToBill()" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #28a745; color: white;">➕ Add to Bill</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wall Calculator Sub-Tab -->
+    <div id="wall-subtab" class="calculator-subtab-content" style="display:none;">
+        <div class="calculator-container" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2>Wall Tile Calculator</h2>
+
+            <!-- Input Mode Selection -->
+            <div class="input-mode-selection" style="display: flex; gap: 1.5rem; margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 6px;">
+                <label class="radio-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="wall_mode" value="predefined" checked onchange="switchWallMode(this.value)">
+                    <span>Predefined Tiles</span>
+                </label>
+                <label class="radio-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="wall_mode" value="inventory" onchange="switchWallMode(this.value)">
+                    <span>From Inventory</span>
+                </label>
+                <label class="radio-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="radio" name="wall_mode" value="manual" onchange="switchWallMode(this.value)">
+                    <span>Manual Entry</span>
+                </label>
+            </div>
+
+            <form id="wall-calc-form" class="calc-form">
+                <!-- Predefined Tiles Mode -->
+                <div id="wall-predefined" class="mode-section" style="padding: 1rem; background: #f8f9fa; border-radius: 6px; margin-bottom: 1rem;">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Tile Size</label>
+                        <select name="tile_size" class="form-control">
+                            <option value="12x8">12x8 inch (12 tiles/box, 8 sq ft/box)</option>
+                            <option value="10x15">10x15 inch (8 tiles/box, 9 sq ft/box)</option>
+                            <option value="12x18">12x18 inch (6 tiles/box, 9 sq ft/box)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Price per Box (Optional)</label>
+                        <input type="number" name="price_per_box_pred" step="0.01" class="form-control" placeholder="₹">
+                    </div>
+                </div>
+
+                <!-- From Inventory Mode -->
+                <div id="wall-inventory" class="mode-section" style="display:none; padding: 1rem; background: #f8f9fa; border-radius: 6px; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Select Tile from Inventory</label>
+                        <select name="product_id" class="form-control">
+                            <option value="">-- Select a tile --</option>
+                            {% for tile in tiles_inventory %}
+                            <option value="{{ tile.id }}"
+                                    data-tiles-per-box="{{ tile.tiles_per_box }}"
+                                    data-coverage="{{ tile.sq_feet_per_box }}"
+                                    data-price="{{ tile.price or '' }}"
+                                    data-dimensions="{{ tile.dimensions }}">
+                                {{ tile.name }} ({{ tile.dimensions }}) {% if tile.price %}@ ₹{{ tile.price }}/box{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Manual Entry Mode -->
+                <div id="wall-manual" class="mode-section" style="display:none; padding: 1rem; background: #f8f9fa; border-radius: 6px; margin-bottom: 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label>Tile Length</label>
+                            <input type="number" name="tile_length" step="0.01" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Tile Width</label>
+                            <input type="number" name="tile_width" step="0.01" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Unit</label>
+                            <select name="tile_unit" class="form-control">
+                                <option value="feet">Feet</option>
+                                <option value="inch">Inch</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Tiles per Box</label>
+                        <input type="number" name="tiles_per_box_manual" class="form-control">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Price per Box (Optional)</label>
+                        <input type="number" name="price_per_box_manual" step="0.01" class="form-control" placeholder="₹">
+                    </div>
+                </div>
+
+                <!-- Room Dimensions -->
+                <div style="font-weight: 600; margin: 1.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #007bff;">Room Dimensions</div>
+
+                <!-- Dimension Input Mode Toggle -->
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="wall_dimension_mode" value="dimensions" checked onchange="switchWallDimensionMode('dimensions')">
+                        <span>Enter Width, Length & Height</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin-top: 0.5rem;">
+                        <input type="radio" name="wall_dimension_mode" value="sqfeet" onchange="switchWallDimensionMode('sqfeet')">
+                        <span>Enter Square Feet Directly</span>
+                    </label>
+                </div>
+
+                <!-- Dimensions Mode -->
+                <div id="wall-dimensions-input" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Room Width (ft) <span style="color: red;">*</span></label>
+                        <input type="number" name="room_width" step="0.01" class="form-control" id="wall_room_width">
+                    </div>
+                    <div class="form-group">
+                        <label>Room Length (ft) <span style="color: red;">*</span></label>
+                        <input type="number" name="room_length" step="0.01" class="form-control" id="wall_room_length">
+                    </div>
+                    <div class="form-group">
+                        <label>Room Height (ft) <span style="color: red;">*</span></label>
+                        <input type="number" name="room_height" step="0.01" class="form-control" id="wall_room_height">
+                    </div>
+                </div>
+
+                <!-- Square Feet Mode -->
+                <div id="wall-sqfeet-input" style="display: none; margin-bottom: 1rem;">
+                    <div class="form-group">
+                        <label>Total Square Feet <span style="color: red;">*</span></label>
+                        <input type="number" name="total_sqfeet" step="0.01" class="form-control" id="wall_total_sqfeet" placeholder="Enter total wall area in sq ft">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="deduct_door" id="wall_deduct_door" checked>
+                        <span>Deduct 2 ft for door entrance</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #007bff; color: white;">Calculate</button>
+            </form>
+
+            <!-- Results -->
+            <div id="wall-results" style="display:none; margin-top: 2rem; padding: 1.5rem; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                <h3>Calculation Results</h3>
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Perimeter:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="wall-perimeter">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Wall Area:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="wall-area">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Coverage per Box:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="wall-coverage">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid #c8e6c9;">
+                        <span style="font-weight: 500;">Boxes Needed:</span>
+                        <span style="font-size: 1.25rem; font-weight: 600; color: #1b5e20;" id="wall-boxes">-</span>
+                    </div>
+                    <div id="wall-price-row" style="display:none; display: flex; justify-content: space-between; padding: 0.75rem;">
+                        <span style="font-weight: 500;">Total Price:</span>
+                        <span style="font-weight: 600; color: #2e7d32;" id="wall-total-price">-</span>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="addWallToBill()" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #28a745; color: white;">➕ Add to Bill</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Box & Price Sub-Tab -->
+    <div id="bill-subtab" class="calculator-subtab-content" style="display:none;">
+        <div class="bill-container" style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h2>Box & Price - Current Bill</h2>
+
+            <div id="bill-items-container">
+                {% if bill_items and bill_items|length > 0 %}
+                <table class="bill-table" style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Item</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Type</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Dimensions</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Room</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Boxes</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Price/Box</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Total</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid #ddd; background: #f8f9fa; font-weight: 600;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bill-items-tbody">
+                        {% for item in bill_items %}
+                        <tr data-index="{{ loop.index0 }}">
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">{{ item.tile_name }}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">
+                                <span class="badge {% if item.calculation_type == 'floor' %}badge-floor{% else %}badge-wall{% endif %}"
+                                      style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem; font-weight: 600;">
+                                    {{ item.calculation_type|capitalize }}
+                                </span>
+                            </td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">{{ item.dimensions }}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">{{ item.room_dimensions }}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">{{ item.boxes_exact }} → <strong>{{ item.boxes_needed }}</strong></td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">{{ ('₹%.2f'|format(item.price_per_box)) if item.price_per_box else '-' }}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">{{ ('₹%.2f'|format(item.total_price)) if item.total_price else '-' }}</td>
+                            <td style="padding: 0.75rem; border-bottom: 1px solid #ddd;">
+                                <button class="btn btn-sm btn-danger" onclick="removeFromBill({{ loop.index0 }})" style="padding: 0.25rem 0.5rem; font-size: 0.875rem; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">✕</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Bill Summary -->
+                <div class="bill-summary" style="background: #f8f9fa; padding: 1.5rem; border-radius: 6px; margin-bottom: 1rem;">
+                    <h3>Summary</h3>
+                    <div id="bill-summary-content">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+
+                <div class="bill-actions" style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" onclick="saveBill()" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #007bff; color: white;">💾 Save Bill</button>
+                    <button class="btn btn-danger" onclick="clearBill()" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #dc3545; color: white;">🗑️ Clear All</button>
+                    <a href="/calculator/bill-history" class="btn btn-secondary" style="padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; background: #6c757d; color: white; text-decoration: none;">📋 View History</a>
+                </div>
+                {% else %}
+                <div class="empty-bill" style="text-align: center; padding: 3rem; color: #666;">
+                    <p>Your bill is empty. Calculate floor or wall tiles and add them to the bill.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.calculator-tab-btn {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.calculator-tab-btn.active {
+    border-bottom-color: #007bff;
+    color: #007bff;
+    font-weight: 600;
+}
+
+.calculator-subtab-content {
+    display: none;
+}
+
+.calculator-subtab-content.active {
+    display: block;
+}
+
+.badge-floor {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-wall {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/calculator.js') }}"></script>
+
+<script>
+// Additional function for switching sub-tabs
+function switchCalculatorSubTab(tabName) {
+    // Hide all sub-tabs
+    document.querySelectorAll('.calculator-subtab-content').forEach(tab => {
+        tab.classList.remove('active');
+        tab.style.display = 'none';
+    });
+
+    // Remove active from all buttons
+    document.querySelectorAll('.calculator-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Show selected sub-tab
+    const selectedTab = document.getElementById(`${tabName}-subtab`);
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+        selectedTab.style.display = 'block';
+    }
+
+    // Mark button as active based on tab name
+    const buttons = document.querySelectorAll('.calculator-tab-btn');
+    const tabIndex = { 'floor': 0, 'wall': 1, 'bill': 2 };
+    if (tabIndex[tabName] !== undefined && buttons[tabIndex[tabName]]) {
+        buttons[tabIndex[tabName]].classList.add('active');
+    }
+
+    // Update bill if on bill sub-tab
+    if (tabName === 'bill') {
+        updateBillDisplay();
+    }
+}
+
+// Switch floor dimension input mode
+function switchFloorDimensionMode(mode) {
+    const dimensionsDiv = document.getElementById('floor-dimensions-input');
+    const sqfeetDiv = document.getElementById('floor-sqfeet-input');
+    const widthInput = document.getElementById('floor_room_width');
+    const lengthInput = document.getElementById('floor_room_length');
+    const sqfeetInput = document.getElementById('floor_total_sqfeet');
+
+    if (mode === 'dimensions') {
+        dimensionsDiv.style.display = 'grid';
+        sqfeetDiv.style.display = 'none';
+        widthInput.required = true;
+        lengthInput.required = true;
+        sqfeetInput.required = false;
+        sqfeetInput.value = '';
+    } else {
+        dimensionsDiv.style.display = 'none';
+        sqfeetDiv.style.display = 'block';
+        widthInput.required = false;
+        lengthInput.required = false;
+        widthInput.value = '';
+        lengthInput.value = '';
+        sqfeetInput.required = true;
+    }
+}
+
+// Switch wall dimension input mode
+function switchWallDimensionMode(mode) {
+    const dimensionsDiv = document.getElementById('wall-dimensions-input');
+    const sqfeetDiv = document.getElementById('wall-sqfeet-input');
+    const widthInput = document.getElementById('wall_room_width');
+    const lengthInput = document.getElementById('wall_room_length');
+    const heightInput = document.getElementById('wall_room_height');
+    const sqfeetInput = document.getElementById('wall_total_sqfeet');
+
+    if (mode === 'dimensions') {
+        dimensionsDiv.style.display = 'grid';
+        sqfeetDiv.style.display = 'none';
+        widthInput.required = true;
+        lengthInput.required = true;
+        heightInput.required = true;
+        sqfeetInput.required = false;
+        sqfeetInput.value = '';
+    } else {
+        dimensionsDiv.style.display = 'none';
+        sqfeetDiv.style.display = 'block';
+        widthInput.required = false;
+        lengthInput.required = false;
+        heightInput.required = false;
+        widthInput.value = '';
+        lengthInput.value = '';
+        heightInput.value = '';
+        sqfeetInput.required = true;
+    }
+}
+
+// Check if we should show the bill tab on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('show_bill') === '1') {
+        switchCalculatorSubTab('bill');
+    }
+});
+</script>
